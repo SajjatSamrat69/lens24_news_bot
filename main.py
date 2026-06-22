@@ -25,7 +25,6 @@ NICHE_TAGS = {
     'Science': 'বিজ্ঞান'
 }
 
-# Free copyright-free category thumbnail images to satisfy theme grid layout blocks
 THUMBNAILS = {
     'World News': 'https://unsplash.com',
     'Technology': 'https://unsplash.com',
@@ -33,10 +32,8 @@ THUMBNAILS = {
     'Science': 'https://unsplash.com'
 }
 
-HISTORY_FILE = "posted_history.txt"
-if not os.path.exists(HISTORY_FILE):
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.write("")
+# HARDENED: Lives entirely in cloud RAM memory so Render never blocks file creation
+POSTED_HISTORY_MEMORY = set()
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 blogger = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
@@ -47,22 +44,8 @@ app = Flask(__name__)
 def home():
     return "News Bot is Live and Running 24/7!"
 
-def load_history():
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return set(f.read().splitlines())
-    except Exception:
-        return set()
-
-def save_to_history(url):
-    try:
-        with open(HISTORY_FILE, "a", encoding="utf-8") as f:
-            f.write(url + "\n")
-    except Exception:
-        pass
-
 def run_portal():
-    posted_links = load_history()
+    global POSTED_HISTORY_MEMORY
     print("\n🤖 [Lens24 Engine] actively scanning global news networks...")
 
     for niche, feed_url in FEEDS.items():
@@ -71,9 +54,11 @@ def run_portal():
         bangla_label = NICHE_TAGS.get(niche, 'লাইভ আপডেট')
         img_url = THUMBNAILS.get(niche, 'https://unsplash.com')
         
-        for entry in parsed_feed.entries[:2]:
-            if entry.link in posted_links:
-                continue
+        # Pulls the single freshest breaking item per loop run to stay safe
+        for entry in parsed_feed.entries[:1]:
+            if entry.link in POSTED_HISTORY_MEMORY:
+                print(f"⏭️ Already processed: {entry.title}")
+                continue 
             
             print(f"🔥 Processing breaking story via Groq: {entry.title}")
             
@@ -86,6 +71,7 @@ def run_portal():
             )
             
             try:
+                # 1. Fetch Bangla title
                 t_comp = groq_client.chat.completions.create(
                     model="llama3-8b-8192",
                     messages=[{"role": "user", "content": title_prompt}],
@@ -93,6 +79,7 @@ def run_portal():
                 )
                 final_title = t_comp.choices.message.content.strip().replace('"', '')
 
+                # 2. Fetch Bangla description
                 b_comp = groq_client.chat.completions.create(
                     model="llama3-8b-8192",
                     messages=[{"role": "user", "content": body_prompt}],
@@ -100,7 +87,7 @@ def run_portal():
                 )
                 final_content = b_comp.choices.message.content.strip()
 
-                # Fix: Embed image directly into post content layout to activate the blog's featured layout widgets
+                # Embed clean image layout cards straight into the HTML code block stream
                 html_content = f'<div class="separator" style="clear: both; text-align: center;"><img src="{img_url}" style="max-width: 100%; height: auto; margin-bottom: 15px;"/></div><p>{final_content}</p>'
 
                 post_payload = {
@@ -110,10 +97,11 @@ def run_portal():
                     "labels": [str(bangla_label), "ব্রেকিং নিউজ"]
                 }
                 
+                # Execute direct API injection into your Blogger database layout
                 blogger.posts().insert(blogId=BLOG_ID, body=post_payload).execute()
                 print(f"✅ Successfully published to '{bangla_label}' site section layout!")
                 
-                save_to_history(entry.link)
+                POSTED_HISTORY_MEMORY.add(entry.link)
                 time.sleep(5)
                 
             except Exception as post_err:
@@ -124,11 +112,13 @@ def start_web_server():
     app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
+    # 1. Run web server thread to satisfy Render's port checker
     server_thread = threading.Thread(target=start_web_server)
     server_thread.daemon = True
     server_thread.start()
     print("🌐 Internal web port configuration loaded successfully.")
     
+    # 2. Run continuous script loops 24/7
     while True:
         try:
             run_portal()
