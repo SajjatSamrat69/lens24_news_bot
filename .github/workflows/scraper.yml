@@ -9,10 +9,12 @@ jobs:
   scrape-and-post:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Forces GitHub to allow data editing
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # Bypasses the write authentication barrier
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,7 +49,7 @@ jobs:
 
                   client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
                   completion = client.chat.completions.create(
-                      model="llama-3.1-8b-instant",
+                      model="openai/gpt-oss-20b", # Updated to the latest stable model architecture link
                       messages=[{"role": "user", "content": f"You are a Bengali editor. Rewrite this title and summary into a unique, plagiarism-free news article body in beautiful native Bengali language. Title: {raw_title} Summary: {raw_desc}"}]
                   )
                   ai_response = completion.choices.message.content
