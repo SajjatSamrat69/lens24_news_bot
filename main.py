@@ -10,10 +10,10 @@ BLOGGER_API_KEY = os.environ.get("BLOGGER_API_KEY", "AIzaSyCcdlaxhi3mNjF-pfTBsWO
 BLOG_ID = os.environ.get("BLOG_ID", "1222511286621075933")
 
 FEEDS = {
-    'World News': 'https://google.com',
-    'Technology': 'https://google.com',
-    'Business': 'https://google.com',
-    'Science': 'https://google.com'
+    'World News': 'https://nytimes.com',
+    'Technology': 'https://feedburner.com',
+    'Business': 'https://cnbc.com',
+    'Science': 'https://sciencedaily.com'
 }
 
 NICHE_TAGS = {
