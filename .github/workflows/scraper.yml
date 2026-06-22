@@ -1,0 +1,29 @@
+name: Lens24 24/7 Automated News Scraper
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Automatically runs every 30 minutes 24/7
+  workflow_dispatch: # Allows you to run it manually with a single button click
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install required news parsing libraries
+        run: |
+          pip install feedparser groq google-api-python-client
+
+      - name: Execute News Engine
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          BLOGGER_API_KEY: ${{ secrets.BLOGGER_API_KEY }}
+          BLOG_ID: ${{ secrets.BLOG_ID }}
+        run: python main.py
