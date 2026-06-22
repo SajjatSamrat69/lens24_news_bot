@@ -1,13 +1,15 @@
-name: 24/7 Free News Scraper
+name: 24-7 Free News Scraper
 
 on:
   schedule:
-    - cron: '0 * * * *' # Runs automatically every 1 hour, 24/7 for free
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
   scrape-and-post:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,18 +21,17 @@ jobs:
 
       - name: Install Free Scraper Tools
         run: |
-          pip install requests beautifulsoup4 groq
+          pip install requests beautifulsoup4 groq lxml
 
       - name: Run Web Scraper Engine
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          python - <<EOF
+          python - << 'EOF'
           import requests
           from bs4 import BeautifulSoup
           import os
           from groq import Groq
-          import datetime
 
           disguise = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
           url = "https://feedburner.com"
@@ -44,15 +45,13 @@ jobs:
                   raw_title = item.find('title').text.strip()
                   raw_desc = item.find('description').text.strip() if item.find('description') is not None else ""
 
-                  # Free Groq AI rewriter
                   client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
                   completion = client.chat.completions.create(
                       model="llama-3.1-8b-instant",
-                      messages=[{"role": "user", "content": f"You are a Bengali editor. Rewrite this title and summary into a unique, plagiarism-free news article. Title: {raw_title} Summary: {raw_desc}"}]
+                      messages=[{"role": "user", "content": f"You are a Bengali editor. Rewrite this title and summary into a unique, plagiarism-free news article body in beautiful native Bengali language. Title: {raw_title} Summary: {raw_desc}"}]
                   )
                   ai_response = completion.choices.message.content
                   
-                  # Save news as a clean local feed file inside your repository
                   with open("live-news.xml", "w", encoding="utf-8") as f:
                       f.write(f'<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0">\n<channel>\n<title>Lens24 Live</title>\n<item>\n<title>{raw_title}</title>\n<description>{ai_response}</description>\n</item>\n</channel>\n</rss>')
                   print("Local feed updated successfully!")
