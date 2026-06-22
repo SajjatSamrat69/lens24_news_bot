@@ -25,16 +25,22 @@ NICHE_TAGS = {
     'Science': 'বিজ্ঞান'
 }
 
+# Free copyright-free category thumbnail images to satisfy theme grid layout blocks
+THUMBNAILS = {
+    'World News': 'https://unsplash.com',
+    'Technology': 'https://unsplash.com',
+    'Business': 'https://unsplash.com',
+    'Science': 'https://unsplash.com'
+}
+
 HISTORY_FILE = "posted_history.txt"
 if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write("")
 
-# Initialize Production-Grade Groq and Blogger Core Engines
 groq_client = Groq(api_key=GROQ_API_KEY)
 blogger = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
 
-# Create a tiny web server to keep Render's port detector happy
 app = Flask(__name__)
 
 @app.route('/')
@@ -63,11 +69,11 @@ def run_portal():
         print(f"🔍 Checking channel: {niche}...")
         parsed_feed = feedparser.parse(feed_url)
         bangla_label = NICHE_TAGS.get(niche, 'লাইভ আপডেট')
+        img_url = THUMBNAILS.get(niche, 'https://unsplash.com')
         
-        # Pulls the top 2 freshest breaking news posts per channel loop
         for entry in parsed_feed.entries[:2]:
             if entry.link in posted_links:
-                continue # Deduplication anchor! Filters out old posts.
+                continue
             
             print(f"🔥 Processing breaking story via Groq: {entry.title}")
             
@@ -80,7 +86,6 @@ def run_portal():
             )
             
             try:
-                # 1. Fetch clean Bangla title
                 t_comp = groq_client.chat.completions.create(
                     model="llama3-8b-8192",
                     messages=[{"role": "user", "content": title_prompt}],
@@ -88,7 +93,6 @@ def run_portal():
                 )
                 final_title = t_comp.choices.message.content.strip().replace('"', '')
 
-                # 2. Fetch clean HTML structured Bangla content block
                 b_comp = groq_client.chat.completions.create(
                     model="llama3-8b-8192",
                     messages=[{"role": "user", "content": body_prompt}],
@@ -96,41 +100,39 @@ def run_portal():
                 )
                 final_content = b_comp.choices.message.content.strip()
 
-                # Payload build explicitly matching your theme properties
+                # Fix: Embed image directly into post content layout to activate the blog's featured layout widgets
+                html_content = f'<div class="separator" style="clear: both; text-align: center;"><img src="{img_url}" style="max-width: 100%; height: auto; margin-bottom: 15px;"/></div><p>{final_content}</p>'
+
                 post_payload = {
                     "kind": "blogger#post",
                     "title": final_title,
-                    "content": f"<p>{final_content}</p>",
+                    "content": html_content,
                     "labels": [str(bangla_label), "ব্রেকিং নিউজ"]
                 }
                 
-                # Direct API push execution bypassing all web layout walls
                 blogger.posts().insert(blogId=BLOG_ID, body=post_payload).execute()
                 print(f"✅ Successfully published to '{bangla_label}' site section layout!")
                 
                 save_to_history(entry.link)
-                time.sleep(5) # Safe cooldown pipeline spacing buffer
+                time.sleep(5)
                 
             except Exception as post_err:
                 print(f"❌ Pipeline skip on target item: {post_err}")
 
 def start_web_server():
-    # Render automatically gives us a port via the PORT environment variable
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
-    # 1. Start the web server in a separate background thread to pass Port check
     server_thread = threading.Thread(target=start_web_server)
     server_thread.daemon = True
     server_thread.start()
     print("🌐 Internal web port configuration loaded successfully.")
     
-    # 2. Instantly kick off your main 24/7 news loop right next to it
     while True:
         try:
             run_portal()
         except Exception as e:
             print(f"Loop error: {e}")
         print("\n⏳ Global scan complete. Sleeping for 30 minutes before next run...")
-        time.sleep(1800) # Runs completely free 24/7 on a continuous loop
+        time.sleep(1800)
