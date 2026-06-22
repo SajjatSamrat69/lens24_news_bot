@@ -35,7 +35,7 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 blogger = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
 
 # Create a tiny web server to keep Render's port detector happy
-app = Flask(_name_)
+app = Flask(__name__)
 
 @app.route('/')
 def home():
