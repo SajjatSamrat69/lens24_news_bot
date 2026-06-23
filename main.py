@@ -127,4 +127,4 @@ content = result["choices"][0]["message"]["content"]
 
 print("\n================ BENGALI NEWS ================\n")
 print(content)
-print("\n==============================================\n"
+print("\n==============================================\n")
