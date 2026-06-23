@@ -4,7 +4,7 @@ import os
 import hashlib
 
 # ----------------------------
-# ENV SAFETY
+# SAFE ENV LOADER
 # ----------------------------
 
 def get_env(name):
@@ -21,28 +21,21 @@ BLOGGER_CLIENT_ID = get_env("BLOGGER_CLIENT_ID")
 BLOGGER_CLIENT_SECRET = get_env("BLOGGER_CLIENT_SECRET")
 
 # ----------------------------
-# RSS SOURCES (GLOBAL + BANGLADESH + JAMUNA TV)
+# RSS SOURCES
 # ----------------------------
 
 FEEDS = [
-    # Global
     "https://feeds.bbci.co.uk/news/world/rss.xml",
     "https://www.aljazeera.com/xml/rss/all.xml",
     "https://www.dw.com/en/top-stories/s-9097/rss",
     "https://www.theguardian.com/world/rss",
-
-    # Tech
     "https://techcrunch.com/feed/",
-
-    # Bangladesh
     "https://www.thedailystar.net/frontpage/rss.xml",
-
-    # Jamuna TV (YouTube RSS)
-    "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw",
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw"
 ]
 
 # ----------------------------
-# FETCH ARTICLES
+# FETCH NEWS
 # ----------------------------
 
 articles = []
@@ -56,18 +49,15 @@ for url in FEEDS:
             link = entry.get("link", "").strip()
 
             if title:
-                articles.append({
-                    "title": title,
-                    "link": link
-                })
+                articles.append({"title": title, "link": link})
 
     except Exception as e:
         print(f"Feed error: {url} -> {e}")
 
-print("Total collected:", len(articles))
+print("Collected:", len(articles))
 
 # ----------------------------
-# DEDUPLICATION
+# DEDUPE
 # ----------------------------
 
 seen = set()
@@ -91,32 +81,28 @@ print("After dedupe:", len(clean))
 headlines = "\n".join([f"- {a['title']}" for a in clean])
 
 prompt = f"""
-You are a professional Bangladeshi and international news editor.
+You are a professional Bangladeshi international news editor.
 
-Select ONLY the 5 most important news from the list.
+Select ONLY the 5 most important news items.
 
-Write in fluent standard Bangla.
+Write in fluent Bangla.
 
-Format each news:
+Format:
 
 Title:
-(Strong Bengali headline)
-
-Summary:
-(3-4 lines factual explanation)
+Summary (3-4 lines)
 
 Rules:
 - No copying sentences
-- No opinions
+- Neutral journalism tone
 - Mix Bangladesh + global news
-- Keep it concise and journalistic
 
 Headlines:
 {headlines}
 """
 
 # ----------------------------
-# GROQ API CALL
+# GROQ CALL
 # ----------------------------
 
 headers = {
@@ -126,9 +112,7 @@ headers = {
 
 payload = {
     "model": "llama-3.1-8b-instant",
-    "messages": [
-        {"role": "user", "content": prompt}
-    ],
+    "messages": [{"role": "user", "content": prompt}],
     "temperature": 0.6
 }
 
@@ -139,8 +123,8 @@ response = requests.post(
     timeout=60
 )
 
-print("STATUS:", response.status_code)
-print("RAW:", response.text)
+print("GROQ STATUS:", response.status_code)
+print("GROQ RAW:", response.text)
 
 if response.status_code != 200:
     raise Exception("Groq API failed")
@@ -148,7 +132,7 @@ if response.status_code != 200:
 content = response.json()["choices"][0]["message"]["content"]
 
 # ----------------------------
-# BLOGGER AUTH
+# BLOGGER TOKEN (SAFE FIXED VERSION)
 # ----------------------------
 
 def get_access_token():
@@ -162,31 +146,40 @@ def get_access_token():
     }
 
     r = requests.post(url, data=data)
-    return r.json()["access_token"]
+
+    print("TOKEN STATUS:", r.status_code)
+    print("TOKEN RAW:", r.text)
+
+    result = r.json()
+
+    if "access_token" not in result:
+        raise Exception("OAuth failed. Check refresh token / client ID / secret.")
+
+    return result["access_token"]
 
 # ----------------------------
-# BLOGGER POST
+# BLOGGER POST FUNCTION
 # ----------------------------
 
-def post_to_blogger(title, content):
-    access_token = get_access_token()
+def post_to_blogger(title, html):
+    token = get_access_token()
 
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
 
     headers = {
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
 
     payload = {
         "title": title,
-        "content": content
+        "content": html
     }
 
     r = requests.post(url, headers=headers, json=payload)
 
     print("BLOGGER STATUS:", r.status_code)
-    print(r.text)
+    print("BLOGGER RAW:", r.text)
 
 # ----------------------------
 # HTML FORMAT
@@ -201,16 +194,9 @@ article_html = f"""
     <h2>{article_title}</h2>
     <div>{safe_content}</div>
     <hr>
-    <small>AI-generated automated news system</small>
+    <small>AI automated news system</small>
 </div>
 """
-
-# ----------------------------
-# SAVE BACKUP
-# ----------------------------
-
-with open("latest_post.html", "w", encoding="utf-8") as f:
-    f.write(article_html)
 
 # ----------------------------
 # DUPLICATE PREVENTION
@@ -218,12 +204,14 @@ with open("latest_post.html", "w", encoding="utf-8") as f:
 
 post_id = hashlib.md5(article_title.encode()).hexdigest()
 
-if os.path.exists("last_post.txt"):
+try:
     with open("last_post.txt") as f:
         last = f.read()
-    if last == post_id:
-        print("Duplicate post skipped")
-        exit()
+        if last == post_id:
+            print("Duplicate detected. Skipping post.")
+            exit()
+except:
+    pass
 
 with open("last_post.txt", "w") as f:
     f.write(post_id)
