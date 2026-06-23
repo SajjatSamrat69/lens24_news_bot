@@ -3,7 +3,7 @@ import requests
 import os
 
 # ----------------------------
-# SAFE ENV LOADER (NO CRASHES)
+# ENV SAFETY
 # ----------------------------
 
 def get_env(name):
@@ -14,21 +14,35 @@ def get_env(name):
 
 GROQ_API_KEY = get_env("GROQ_API_KEY")
 
-# Blogger (not used yet, but prepared for next step)
 BLOG_ID = get_env("BLOG_ID")
 BLOGGER_REFRESH_TOKEN = get_env("BLOGGER_REFRESH_TOKEN")
 BLOGGER_CLIENT_ID = get_env("BLOGGER_CLIENT_ID")
 BLOGGER_CLIENT_SECRET = get_env("BLOGGER_CLIENT_SECRET")
 
 # ----------------------------
-# FEEDS
+# RSS SOURCES (GLOBAL + BANGLADESH)
 # ----------------------------
 
-with open("feeds.txt", "r", encoding="utf-8") as f:
-    FEEDS = [line.strip() for line in f if line.strip()]
+FEEDS = [
+    # Global
+    "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "https://www.aljazeera.com/xml/rss/all.xml",
+    "https://www.dw.com/en/top-stories/s-9097/rss",
+    "https://www.theguardian.com/world/rss",
+
+    # Sports
+    "https://feeds.espn.com/espn/rss/news",
+
+    # Tech
+    "https://techcrunch.com/feed/",
+
+    # Bangladesh (key addition)
+    "https://www.thedailystar.net/frontpage/rss.xml",
+    "https://www.thedailystar.net/news/bangladesh/rss.xml",
+]
 
 # ----------------------------
-# FETCH NEWS
+# FETCH ARTICLES
 # ----------------------------
 
 articles = []
@@ -37,7 +51,7 @@ for url in FEEDS:
     try:
         feed = feedparser.parse(url)
 
-        for entry in feed.entries[:10]:
+        for entry in feed.entries[:8]:
             title = entry.get("title", "").strip()
             link = entry.get("link", "").strip()
 
@@ -50,50 +64,61 @@ for url in FEEDS:
     except Exception as e:
         print(f"Feed error: {url} -> {e}")
 
-print(f"Collected: {len(articles)} articles")
+print(f"Total collected: {len(articles)}")
 
 # ----------------------------
-# DEDUPLICATION
+# BASIC DEDUPE (improved)
 # ----------------------------
 
 seen = set()
 clean = []
 
 for a in articles:
-    t = a["title"].lower()
+    key = a["title"].lower().strip()
 
-    if t not in seen:
-        seen.add(t)
+    if key not in seen:
+        seen.add(key)
         clean.append(a)
 
-clean = clean[:20]
+clean = clean[:25]
 
 print(f"After dedupe: {len(clean)}")
 
 # ----------------------------
-# BUILD PROMPT (BENGALI NEWS)
+# BUILD PROMPT (BANGLA NEWS ENGINE)
 # ----------------------------
 
 headlines = "\n".join([f"- {a['title']}" for a in clean])
 
 prompt = f"""
-You are a professional Bengali news editor.
+You are a professional Bangladeshi international news editor.
 
-Create 5 important world news briefs in Bengali.
+Task:
+From the given headlines, select the 5 most important global or Bangladesh-related news.
+
+Write in fluent standard Bangla.
+
+Format EACH news item like this:
+
+Title:
+(Strong Bengali headline)
+
+Summary:
+(3-4 lines clear factual explanation)
 
 Rules:
-- Do NOT copy sentences
-- Use simple Bengali
-- Neutral tone
-- Focus on important global events
-- Each news item: Title + 3-4 line summary
+- No copying sentences
+- No opinions
+- Focus on importance
+- Include Bangladesh + global mix
+- Avoid repetition
 
 Headlines:
 {headlines}
 """
 
 # ----------------------------
-# GROQ CALL (DEBUG ENABLED)
+# GROQ API CALL
 # ----------------------------
 
 headers = {
@@ -102,12 +127,11 @@ headers = {
 }
 
 payload = {
-    # SAFE DEFAULT MODEL (change if needed)
     "model": "llama-3.1-8b-instant",
     "messages": [
         {"role": "user", "content": prompt}
     ],
-    "temperature": 0.7
+    "temperature": 0.6
 }
 
 response = requests.post(
@@ -117,23 +141,33 @@ response = requests.post(
     timeout=60
 )
 
-# ----------------------------
-# FULL DEBUG OUTPUT
-# ----------------------------
-
-print("\nSTATUS CODE:", response.status_code)
-print("RAW RESPONSE:\n", response.text)
+print("STATUS:", response.status_code)
+print("RAW:", response.text)
 
 if response.status_code != 200:
-    raise Exception("Groq API failed (see error above)")
+    raise Exception("Groq API failed")
 
-result = response.json()
-content = result["choices"][0]["message"]["content"]
+content = response.json()["choices"][0]["message"]["content"]
+
+# ----------------------------
+# BLOGGER READY HTML FORMAT
+# ----------------------------
+
+article_title = "আজকের শীর্ষ বাংলাদেশ ও বিশ্ব সংবাদ"
+
+article_html = f"""
+<div style="font-family: Arial; line-height:1.6;">
+    <h2>{article_title}</h2>
+    <div>{content.replace('\n', '<br>')}</div>
+    <hr>
+    <small>AI-generated news engine</small>
+</div>
+"""
 
 # ----------------------------
 # OUTPUT
 # ----------------------------
 
-print("\n================ BENGALI NEWS ================\n")
-print(content)
+print("\n================ FINAL ARTICLE ================\n")
+print(article_html)
 print("\n==============================================\n")
