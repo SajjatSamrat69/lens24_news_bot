@@ -1,6 +1,7 @@
 import feedparser
 import requests
 import os
+import hashlib
 
 # ----------------------------
 # ENV SAFETY
@@ -20,7 +21,7 @@ BLOGGER_CLIENT_ID = get_env("BLOGGER_CLIENT_ID")
 BLOGGER_CLIENT_SECRET = get_env("BLOGGER_CLIENT_SECRET")
 
 # ----------------------------
-# RSS SOURCES (GLOBAL + BANGLADESH)
+# RSS SOURCES (GLOBAL + BANGLADESH + JAMUNA TV)
 # ----------------------------
 
 FEEDS = [
@@ -30,15 +31,14 @@ FEEDS = [
     "https://www.dw.com/en/top-stories/s-9097/rss",
     "https://www.theguardian.com/world/rss",
 
-    # Sports
-    "https://feeds.espn.com/espn/rss/news",
-
     # Tech
     "https://techcrunch.com/feed/",
 
-    # Bangladesh (key addition)
+    # Bangladesh
     "https://www.thedailystar.net/frontpage/rss.xml",
-    "https://www.thedailystar.net/news/bangladesh/rss.xml",
+
+    # Jamuna TV (YouTube RSS)
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw",
 ]
 
 # ----------------------------
@@ -64,10 +64,10 @@ for url in FEEDS:
     except Exception as e:
         print(f"Feed error: {url} -> {e}")
 
-print(f"Total collected: {len(articles)}")
+print("Total collected:", len(articles))
 
 # ----------------------------
-# BASIC DEDUPE (improved)
+# DEDUPLICATION
 # ----------------------------
 
 seen = set()
@@ -82,36 +82,34 @@ for a in articles:
 
 clean = clean[:25]
 
-print(f"After dedupe: {len(clean)}")
+print("After dedupe:", len(clean))
 
 # ----------------------------
-# BUILD PROMPT (BANGLA NEWS ENGINE)
+# BUILD PROMPT
 # ----------------------------
 
 headlines = "\n".join([f"- {a['title']}" for a in clean])
 
 prompt = f"""
-You are a professional Bangladeshi international news editor.
+You are a professional Bangladeshi and international news editor.
 
-Task:
-From the given headlines, select the 5 most important global or Bangladesh-related news.
+Select ONLY the 5 most important news from the list.
 
 Write in fluent standard Bangla.
 
-Format EACH news item like this:
+Format each news:
 
 Title:
 (Strong Bengali headline)
 
 Summary:
-(3-4 lines clear factual explanation)
+(3-4 lines factual explanation)
 
 Rules:
 - No copying sentences
 - No opinions
-- Focus on importance
-- Include Bangladesh + global mix
-- Avoid repetition
+- Mix Bangladesh + global news
+- Keep it concise and journalistic
 
 Headlines:
 {headlines}
@@ -150,7 +148,48 @@ if response.status_code != 200:
 content = response.json()["choices"][0]["message"]["content"]
 
 # ----------------------------
-# BLOGGER READY HTML FORMAT
+# BLOGGER AUTH
+# ----------------------------
+
+def get_access_token():
+    url = "https://oauth2.googleapis.com/token"
+
+    data = {
+        "client_id": BLOGGER_CLIENT_ID,
+        "client_secret": BLOGGER_CLIENT_SECRET,
+        "refresh_token": BLOGGER_REFRESH_TOKEN,
+        "grant_type": "refresh_token"
+    }
+
+    r = requests.post(url, data=data)
+    return r.json()["access_token"]
+
+# ----------------------------
+# BLOGGER POST
+# ----------------------------
+
+def post_to_blogger(title, content):
+    access_token = get_access_token()
+
+    url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "title": title,
+        "content": content
+    }
+
+    r = requests.post(url, headers=headers, json=payload)
+
+    print("BLOGGER STATUS:", r.status_code)
+    print(r.text)
+
+# ----------------------------
+# HTML FORMAT
 # ----------------------------
 
 article_title = "আজকের শীর্ষ বাংলাদেশ ও বিশ্ব সংবাদ"
@@ -162,14 +201,35 @@ article_html = f"""
     <h2>{article_title}</h2>
     <div>{safe_content}</div>
     <hr>
-    <small>AI-generated news engine</small>
+    <small>AI-generated automated news system</small>
 </div>
 """
 
 # ----------------------------
-# OUTPUT
+# SAVE BACKUP
 # ----------------------------
 
-print("\n================ FINAL ARTICLE ================\n")
-print(article_html)
-print("\n==============================================\n")
+with open("latest_post.html", "w", encoding="utf-8") as f:
+    f.write(article_html)
+
+# ----------------------------
+# DUPLICATE PREVENTION
+# ----------------------------
+
+post_id = hashlib.md5(article_title.encode()).hexdigest()
+
+if os.path.exists("last_post.txt"):
+    with open("last_post.txt") as f:
+        last = f.read()
+    if last == post_id:
+        print("Duplicate post skipped")
+        exit()
+
+with open("last_post.txt", "w") as f:
+    f.write(post_id)
+
+# ----------------------------
+# FINAL POST
+# ----------------------------
+
+post_to_blogger(article_title, article_html)
