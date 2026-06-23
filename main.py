@@ -2,6 +2,7 @@ import feedparser
 import requests
 import os
 import hashlib
+from collections import defaultdict
 
 # ----------------------------
 # ENV
@@ -25,27 +26,30 @@ BLOGGER_CLIENT_SECRET = env("BLOGGER_CLIENT_SECRET")
 # ----------------------------
 
 FEEDS = [
-    # International
     "https://feeds.bbci.co.uk/news/world/rss.xml",
     "https://www.aljazeera.com/xml/rss/all.xml",
     "https://www.dw.com/en/top-stories/s-9097/rss",
-
-    # Tech
-    "https://techcrunch.com/feed/",
-
-    # Entertainment / Sports
     "https://www.theguardian.com/world/rss",
     "https://feeds.espn.com/espn/rss/news",
-
-    # Bangladesh
+    "https://techcrunch.com/feed/",
     "https://www.thedailystar.net/frontpage/rss.xml",
-
-    # Jamuna TV (YouTube)
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw"
 ]
 
 # ----------------------------
-# FETCH
+# CATEGORY MAP (BENGALI OUTPUT)
+# ----------------------------
+
+CATEGORIES = {
+    "দেশীয় রাজনীতি": [],
+    "আন্তর্জাতিক": [],
+    "খেলাধুলা": [],
+    "বিনোদন": [],
+    "বিজ্ঞান ও প্রযুক্তি": []
+}
+
+# ----------------------------
+# FETCH RSS
 # ----------------------------
 
 items = []
@@ -59,7 +63,7 @@ for url in FEEDS:
             link = e.get("link", "")
 
             image = ""
-            if "media_content" in e:
+            if hasattr(e, "media_content") and e.media_content:
                 image = e.media_content[0].get("url", "")
 
             if title:
@@ -82,52 +86,16 @@ seen = set()
 clean = []
 
 for i in items:
-    k = i["title"].lower()
-    if k not in seen:
-        seen.add(k)
+    key = i["title"].lower()
+
+    if key not in seen:
+        seen.add(key)
         clean.append(i)
 
-clean = clean[:20]
+clean = clean[:25]
 
 # ----------------------------
-# AI PROMPT (CLASSIFICATION + SUMMARIZATION)
-# ----------------------------
-
-context = "\n".join([f"- {x['title']}" for x in clean])
-
-prompt = f"""
-You are a professional Bangladeshi newsroom editor.
-
-Classify each news into ONE category:
-
-Categories:
-- দেশীয় রাজনীতি
-- আন্তর্জাতিক
-- খেলাধুলা
-- বিনোদন
-- বিজ্ঞান ও প্রযুক্তি
-
-Then write a structured news summary in Bengali.
-
-Format for each item:
-
-Category:
-Title:
-Summary (3-4 lines):
-Source Link:
-
-Rules:
-- No repetition
-- No copying sentences
-- Must be factual
-- Must match category correctly
-
-Headlines:
-{context}
-"""
-
-# ----------------------------
-# GROQ CALL
+# GROQ HEADERS
 # ----------------------------
 
 headers = {
@@ -135,40 +103,134 @@ headers = {
     "Content-Type": "application/json"
 }
 
-payload = {
-    "model": "llama-3.1-8b-instant",
-    "messages": [{"role": "user", "content": prompt}],
-    "temperature": 0.5
-}
-
-r = requests.post(
-    "https://api.groq.com/openai/v1/chat/completions",
-    headers=headers,
-    json=payload,
-    timeout=60
-)
-
-print("GROQ:", r.status_code, r.text)
-
-if r.status_code != 200:
-    raise Exception("Groq failed")
-
-content = r.json()["choices"][0]["message"]["content"]
-
 # ----------------------------
-# CLEAN TEXT
+# CATEGORY CLASSIFIER (FAST)
 # ----------------------------
 
-def clean(text):
-    return "<br>".join([x.strip() for x in text.split("\n") if x.strip()])
+def classify(title):
+    prompt = f"""
+Classify into ONE category only:
 
-html_body = clean(content)
+- দেশীয় রাজনীতি
+- আন্তর্জাতিক
+- খেলাধুলা
+- বিনোদন
+- বিজ্ঞান ও প্রযুক্তি
+
+News: {title}
+
+Return only category name.
+"""
+
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0
+        },
+        timeout=30
+    )
+
+    try:
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except:
+        return "আন্তর্জাতিক"
+
+# ----------------------------
+# DISTRIBUTE INTO CATEGORIES
+# ----------------------------
+
+for i in clean:
+    cat = classify(i["title"])
+
+    if cat in CATEGORIES:
+        CATEGORIES[cat].append(i)
+    else:
+        CATEGORIES["আন্তর্জাতিক"].append(i)
+
+# limit per category (avoid spam)
+for k in CATEGORIES:
+    CATEGORIES[k] = CATEGORIES[k][:3]
+
+# ----------------------------
+# AI SUMMARIZER PER CATEGORY
+# ----------------------------
+
+final_html = ""
+
+for cat, items in CATEGORIES.items():
+
+    if not items:
+        continue
+
+    headlines = "\n".join([f"- {x['title']}" for x in items])
+
+    prompt = f"""
+You are a professional Bangladeshi newsroom editor.
+
+Category: {cat}
+
+Write structured Bengali news for EACH headline.
+
+Rules:
+- No repetition
+- Clear journalistic tone
+- 3–4 line summary per news
+
+Headlines:
+{headlines}
+"""
+
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.4
+        },
+        timeout=60
+    )
+
+    try:
+        section = r.json()["choices"][0]["message"]["content"]
+    except:
+        section = "বিশ্লেষণ ব্যর্থ হয়েছে"
+
+    final_html += f"""
+    <h2>{cat}</h2>
+    <div style="white-space: pre-wrap; line-height:1.6;">
+        {section}
+    </div>
+    <hr>
+    """
+
+# ----------------------------
+# CLEAN HTML (NO REPETITION ISSUES)
+# ----------------------------
+
+def clean_html(text):
+    lines = text.split("\n")
+    seen = set()
+    out = []
+
+    for l in lines:
+        l = l.strip()
+        if l and l not in seen:
+            seen.add(l)
+            out.append(l)
+
+    return "<br>".join(out)
+
+final_html = clean_html(final_html)
 
 # ----------------------------
 # ACCESS TOKEN
 # ----------------------------
 
-def token():
+def get_token():
     r = requests.post(
         "https://oauth2.googleapis.com/token",
         data={
@@ -182,70 +244,55 @@ def token():
     data = r.json()
 
     if "access_token" not in data:
-        raise Exception(f"OAuth error: {data}")
+        raise Exception(f"OAuth failed: {data}")
 
     return data["access_token"]
 
 # ----------------------------
-# POST BLOGGER
+# POST TO BLOGGER
 # ----------------------------
 
-def post(title, body, labels):
-    t = token()
+def post(title, content, labels):
+    token = get_token()
 
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
 
-    headers = {
-        "Authorization": f"Bearer {t}",
-        "Content-Type": "application/json"
-    }
+    r = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "title": title,
+            "content": content,
+            "labels": labels
+        }
+    )
 
-    payload = {
-        "title": title,
-        "content": body,
-        "labels": labels
-    }
-
-    res = requests.post(url, headers=headers, json=payload)
-
-    print("BLOGGER:", res.status_code, res.text)
-
-# ----------------------------
-# CATEGORY DETECTION (simple fallback)
-# ----------------------------
-
-def detect_labels(text):
-    if "খেলাধুলা" in text:
-        return ["খেলাধুলা"]
-    if "বিনোদন" in text:
-        return ["বিনোদন"]
-    if "প্রযুক্তি" in text:
-        return ["বিজ্ঞান ও প্রযুক্তি"]
-    if "রাজনীতি" in text:
-        return ["দেশীয় রাজনীতি"]
-    return ["আন্তর্জাতিক"]
-
-labels = detect_labels(content)
+    print("BLOGGER:", r.status_code, r.text)
 
 # ----------------------------
-# DUPLICATE PREVENTION
+# DUPLICATE PROTECTION
 # ----------------------------
 
-pid = hashlib.md5(content.encode()).hexdigest()
+post_id = hashlib.md5(final_html.encode()).hexdigest()
 
 try:
-    if open("last.txt").read() == pid:
+    if open("last.txt").read() == post_id:
         print("Duplicate skipped")
         exit()
 except:
     pass
 
-open("last.txt", "w").write(pid)
+open("last.txt", "w").write(post_id)
 
 # ----------------------------
 # FINAL POST
 # ----------------------------
 
-title = "আজকের বাংলাদেশ ও আন্তর্জাতিক সংবাদ"
-
-post(title, html_body, labels)
+post(
+    "আজকের বাংলাদেশ ও আন্তর্জাতিক শীর্ষ সংবাদ",
+    final_html,
+    ["বাংলাদেশ", "আন্তর্জাতিক", "খেলাধুলা", "প্রযুক্তি", "বিনোদন"]
+)
