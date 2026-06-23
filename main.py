@@ -155,10 +155,12 @@ content = response.json()["choices"][0]["message"]["content"]
 
 article_title = "আজকের শীর্ষ বাংলাদেশ ও বিশ্ব সংবাদ"
 
+safe_content = content.replace("\n", "<br>")
+
 article_html = f"""
 <div style="font-family: Arial; line-height:1.6;">
     <h2>{article_title}</h2>
-    <div>{content.replace('\n', '<br>')}</div>
+    <div>{safe_content}</div>
     <hr>
     <small>AI-generated news engine</small>
 </div>
