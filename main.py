@@ -4,57 +4,75 @@ import os
 import hashlib
 
 # ----------------------------
-# SAFE ENV LOADER
+# ENV
 # ----------------------------
 
-def get_env(name):
-    value = os.getenv(name)
-    if not value:
-        raise Exception(f"Missing environment variable: {name}")
-    return value
+def env(name):
+    v = os.getenv(name)
+    if not v:
+        raise Exception(f"Missing env: {name}")
+    return v
 
-GROQ_API_KEY = get_env("GROQ_API_KEY")
+GROQ_API_KEY = env("GROQ_API_KEY")
 
-BLOG_ID = get_env("BLOG_ID")
-BLOGGER_REFRESH_TOKEN = get_env("BLOGGER_REFRESH_TOKEN")
-BLOGGER_CLIENT_ID = get_env("BLOGGER_CLIENT_ID")
-BLOGGER_CLIENT_SECRET = get_env("BLOGGER_CLIENT_SECRET")
+BLOG_ID = env("BLOG_ID")
+BLOGGER_REFRESH_TOKEN = env("BLOGGER_REFRESH_TOKEN")
+BLOGGER_CLIENT_ID = env("BLOGGER_CLIENT_ID")
+BLOGGER_CLIENT_SECRET = env("BLOGGER_CLIENT_SECRET")
 
 # ----------------------------
-# RSS SOURCES
+# SOURCES
 # ----------------------------
 
 FEEDS = [
+    # International
     "https://feeds.bbci.co.uk/news/world/rss.xml",
     "https://www.aljazeera.com/xml/rss/all.xml",
     "https://www.dw.com/en/top-stories/s-9097/rss",
-    "https://www.theguardian.com/world/rss",
+
+    # Tech
     "https://techcrunch.com/feed/",
+
+    # Entertainment / Sports
+    "https://www.theguardian.com/world/rss",
+    "https://feeds.espn.com/espn/rss/news",
+
+    # Bangladesh
     "https://www.thedailystar.net/frontpage/rss.xml",
+
+    # Jamuna TV (YouTube)
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw"
 ]
 
 # ----------------------------
-# FETCH NEWS
+# FETCH
 # ----------------------------
 
-articles = []
+items = []
 
 for url in FEEDS:
     try:
         feed = feedparser.parse(url)
 
-        for entry in feed.entries[:8]:
-            title = entry.get("title", "").strip()
-            link = entry.get("link", "").strip()
+        for e in feed.entries[:7]:
+            title = e.get("title", "").strip()
+            link = e.get("link", "")
+
+            image = ""
+            if "media_content" in e:
+                image = e.media_content[0].get("url", "")
 
             if title:
-                articles.append({"title": title, "link": link})
+                items.append({
+                    "title": title,
+                    "link": link,
+                    "image": image
+                })
 
-    except Exception as e:
-        print(f"Feed error: {url} -> {e}")
+    except Exception as ex:
+        print("Feed error:", url, ex)
 
-print("Collected:", len(articles))
+print("Fetched:", len(items))
 
 # ----------------------------
 # DEDUPE
@@ -63,42 +81,49 @@ print("Collected:", len(articles))
 seen = set()
 clean = []
 
-for a in articles:
-    key = a["title"].lower().strip()
+for i in items:
+    k = i["title"].lower()
+    if k not in seen:
+        seen.add(k)
+        clean.append(i)
 
-    if key not in seen:
-        seen.add(key)
-        clean.append(a)
-
-clean = clean[:25]
-
-print("After dedupe:", len(clean))
+clean = clean[:20]
 
 # ----------------------------
-# BUILD PROMPT
+# AI PROMPT (CLASSIFICATION + SUMMARIZATION)
 # ----------------------------
 
-headlines = "\n".join([f"- {a['title']}" for a in clean])
+context = "\n".join([f"- {x['title']}" for x in clean])
 
 prompt = f"""
-You are a professional Bangladeshi international news editor.
+You are a professional Bangladeshi newsroom editor.
 
-Select ONLY the 5 most important news items.
+Classify each news into ONE category:
 
-Write in fluent Bangla.
+Categories:
+- দেশীয় রাজনীতি
+- আন্তর্জাতিক
+- খেলাধুলা
+- বিনোদন
+- বিজ্ঞান ও প্রযুক্তি
 
-Format:
+Then write a structured news summary in Bengali.
 
+Format for each item:
+
+Category:
 Title:
-Summary (3-4 lines)
+Summary (3-4 lines):
+Source Link:
 
 Rules:
+- No repetition
 - No copying sentences
-- Neutral journalism tone
-- Mix Bangladesh + global news
+- Must be factual
+- Must match category correctly
 
 Headlines:
-{headlines}
+{context}
 """
 
 # ----------------------------
@@ -113,111 +138,114 @@ headers = {
 payload = {
     "model": "llama-3.1-8b-instant",
     "messages": [{"role": "user", "content": prompt}],
-    "temperature": 0.6
+    "temperature": 0.5
 }
 
-response = requests.post(
+r = requests.post(
     "https://api.groq.com/openai/v1/chat/completions",
     headers=headers,
     json=payload,
     timeout=60
 )
 
-print("GROQ STATUS:", response.status_code)
-print("GROQ RAW:", response.text)
+print("GROQ:", r.status_code, r.text)
 
-if response.status_code != 200:
-    raise Exception("Groq API failed")
+if r.status_code != 200:
+    raise Exception("Groq failed")
 
-content = response.json()["choices"][0]["message"]["content"]
-
-# ----------------------------
-# BLOGGER TOKEN (SAFE FIXED VERSION)
-# ----------------------------
-
-def get_access_token():
-    url = "https://oauth2.googleapis.com/token"
-
-    data = {
-        "client_id": BLOGGER_CLIENT_ID,
-        "client_secret": BLOGGER_CLIENT_SECRET,
-        "refresh_token": BLOGGER_REFRESH_TOKEN,
-        "grant_type": "refresh_token"
-    }
-
-    r = requests.post(url, data=data)
-
-    print("TOKEN STATUS:", r.status_code)
-    print("TOKEN RAW:", r.text)
-
-    result = r.json()
-
-    if "access_token" not in result:
-        raise Exception("OAuth failed. Check refresh token / client ID / secret.")
-
-    return result["access_token"]
+content = r.json()["choices"][0]["message"]["content"]
 
 # ----------------------------
-# BLOGGER POST FUNCTION
+# CLEAN TEXT
 # ----------------------------
 
-def post_to_blogger(title, html):
-    token = get_access_token()
+def clean(text):
+    return "<br>".join([x.strip() for x in text.split("\n") if x.strip()])
+
+html_body = clean(content)
+
+# ----------------------------
+# ACCESS TOKEN
+# ----------------------------
+
+def token():
+    r = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "client_id": BLOGGER_CLIENT_ID,
+            "client_secret": BLOGGER_CLIENT_SECRET,
+            "refresh_token": BLOGGER_REFRESH_TOKEN,
+            "grant_type": "refresh_token"
+        }
+    )
+
+    data = r.json()
+
+    if "access_token" not in data:
+        raise Exception(f"OAuth error: {data}")
+
+    return data["access_token"]
+
+# ----------------------------
+# POST BLOGGER
+# ----------------------------
+
+def post(title, body, labels):
+    t = token()
 
     url = f"https://www.googleapis.com/blogger/v3/blogs/{BLOG_ID}/posts/"
 
     headers = {
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {t}",
         "Content-Type": "application/json"
     }
 
     payload = {
         "title": title,
-        "content": html
+        "content": body,
+        "labels": labels
     }
 
-    r = requests.post(url, headers=headers, json=payload)
+    res = requests.post(url, headers=headers, json=payload)
 
-    print("BLOGGER STATUS:", r.status_code)
-    print("BLOGGER RAW:", r.text)
+    print("BLOGGER:", res.status_code, res.text)
 
 # ----------------------------
-# HTML FORMAT
+# CATEGORY DETECTION (simple fallback)
 # ----------------------------
 
-article_title = "আজকের শীর্ষ বাংলাদেশ ও বিশ্ব সংবাদ"
+def detect_labels(text):
+    if "খেলাধুলা" in text:
+        return ["খেলাধুলা"]
+    if "বিনোদন" in text:
+        return ["বিনোদন"]
+    if "প্রযুক্তি" in text:
+        return ["বিজ্ঞান ও প্রযুক্তি"]
+    if "রাজনীতি" in text:
+        return ["দেশীয় রাজনীতি"]
+    return ["আন্তর্জাতিক"]
 
-safe_content = content.replace("\n", "<br>")
-
-article_html = f"""
-<div style="font-family: Arial; line-height:1.6;">
-    <h2>{article_title}</h2>
-    <div>{safe_content}</div>
-    <hr>
-    <small>AI automated news system</small>
-</div>
-"""
+labels = detect_labels(content)
 
 # ----------------------------
 # DUPLICATE PREVENTION
 # ----------------------------
 
-post_id = hashlib.md5(article_title.encode()).hexdigest()
+pid = hashlib.md5(content.encode()).hexdigest()
 
 try:
-    with open("last_post.txt") as f:
-        last = f.read()
-        if last == post_id:
-            print("Duplicate detected. Skipping post.")
-            exit()
+    if open("last.txt").read() == pid:
+        print("Duplicate skipped")
+        exit()
 except:
     pass
 
-with open("last_post.txt", "w") as f:
-    f.write(post_id)
+open("last.txt", "w").write(pid)
 
 # ----------------------------
 # FINAL POST
 # ----------------------------
 
-post_to_blogger(article_title, article_html)
+title = "আজকের বাংলাদেশ ও আন্তর্জাতিক সংবাদ"
+
+post(title, html_body, labels)
