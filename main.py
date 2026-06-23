@@ -22,7 +22,7 @@ BLOGGER_CLIENT_ID = env("BLOGGER_CLIENT_ID")
 BLOGGER_CLIENT_SECRET = env("BLOGGER_CLIENT_SECRET")
 
 # ----------------------------
-# SOURCES
+# RSS SOURCES
 # ----------------------------
 
 FEEDS = [
@@ -37,19 +37,7 @@ FEEDS = [
 ]
 
 # ----------------------------
-# CATEGORY MAP (BENGALI OUTPUT)
-# ----------------------------
-
-CATEGORIES = {
-    "দেশীয় রাজনীতি": [],
-    "আন্তর্জাতিক": [],
-    "খেলাধুলা": [],
-    "বিনোদন": [],
-    "বিজ্ঞান ও প্রযুক্তি": []
-}
-
-# ----------------------------
-# FETCH RSS
+# FETCH
 # ----------------------------
 
 items = []
@@ -58,7 +46,7 @@ for url in FEEDS:
     try:
         feed = feedparser.parse(url)
 
-        for e in feed.entries[:7]:
+        for e in feed.entries[:6]:
             title = e.get("title", "").strip()
             link = e.get("link", "")
 
@@ -86,16 +74,16 @@ seen = set()
 clean = []
 
 for i in items:
-    key = i["title"].lower()
+    k = i["title"].lower()
 
-    if key not in seen:
-        seen.add(key)
+    if k not in seen:
+        seen.add(k)
         clean.append(i)
 
-clean = clean[:25]
+clean = clean[:20]
 
 # ----------------------------
-# GROQ HEADERS
+# GROQ SETUP
 # ----------------------------
 
 headers = {
@@ -104,12 +92,20 @@ headers = {
 }
 
 # ----------------------------
-# CATEGORY CLASSIFIER (FAST)
+# CATEGORY CLASSIFICATION (STRICT)
 # ----------------------------
+
+CATEGORIES = {
+    "দেশীয় রাজনীতি": [],
+    "আন্তর্জাতিক": [],
+    "খেলাধুলা": [],
+    "বিনোদন": [],
+    "বিজ্ঞান ও প্রযুক্তি": []
+}
 
 def classify(title):
     prompt = f"""
-Classify into ONE category only:
+Classify this news into ONLY ONE category:
 
 - দেশীয় রাজনীতি
 - আন্তর্জাতিক
@@ -119,7 +115,7 @@ Classify into ONE category only:
 
 News: {title}
 
-Return only category name.
+Return ONLY category name.
 """
 
     r = requests.post(
@@ -129,8 +125,7 @@ Return only category name.
             "model": "llama-3.1-8b-instant",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0
-        },
-        timeout=30
+        }
     )
 
     try:
@@ -139,45 +134,40 @@ Return only category name.
         return "আন্তর্জাতিক"
 
 # ----------------------------
-# DISTRIBUTE INTO CATEGORIES
+# DISTRIBUTE
 # ----------------------------
 
 for i in clean:
     cat = classify(i["title"])
 
-    if cat in CATEGORIES:
-        CATEGORIES[cat].append(i)
-    else:
-        CATEGORIES["আন্তর্জাতিক"].append(i)
+    if cat not in CATEGORIES:
+        cat = "আন্তর্জাতিক"
 
-# limit per category (avoid spam)
+    CATEGORIES[cat].append(i)
+
+# limit per category (balance fix)
 for k in CATEGORIES:
-    CATEGORIES[k] = CATEGORIES[k][:3]
+    CATEGORIES[k] = CATEGORIES[k][:2]
 
 # ----------------------------
-# AI SUMMARIZER PER CATEGORY
+# BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
 
-final_html = ""
-
-for cat, items in CATEGORIES.items():
-
-    if not items:
-        continue
-
+def generate_news_block(category, items):
     headlines = "\n".join([f"- {x['title']}" for x in items])
 
     prompt = f"""
-You are a professional Bangladeshi newsroom editor.
+You are a professional Bangladeshi news editor.
 
-Category: {cat}
+Write detailed Bengali news for EACH headline.
 
-Write structured Bengali news for EACH headline.
+Category: {category}
 
 Rules:
-- No repetition
-- Clear journalistic tone
-- 3–4 line summary per news
+- 4–6 line summaries
+- no repetition
+- proper journalistic tone
+- structured output
 
 Headlines:
 {headlines}
@@ -190,25 +180,43 @@ Headlines:
             "model": "llama-3.1-8b-instant",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.4
-        },
-        timeout=60
+        }
     )
 
     try:
-        section = r.json()["choices"][0]["message"]["content"]
+        return r.json()["choices"][0]["message"]["content"]
     except:
-        section = "বিশ্লেষণ ব্যর্থ হয়েছে"
-
-    final_html += f"""
-    <h2>{cat}</h2>
-    <div style="white-space: pre-wrap; line-height:1.6;">
-        {section}
-    </div>
-    <hr>
-    """
+        return "বিশ্লেষণ ব্যর্থ"
 
 # ----------------------------
-# CLEAN HTML (NO REPETITION ISSUES)
+# BUILD HTML
+# ----------------------------
+
+final_html = ""
+
+for cat, items in CATEGORIES.items():
+
+    if not items:
+        continue
+
+    block = generate_news_block(cat, items)
+
+    final_html += f"<h2>{cat}</h2>"
+
+    for i in items:
+        img = i.get("image", "")
+
+        if img:
+            final_html += f'<img src="{img}" style="width:100%;max-height:250px;object-fit:cover;">'
+
+        final_html += f"""
+        <h3>{i['title']}</h3>
+        <p>{block}</p>
+        <hr>
+        """
+
+# ----------------------------
+# CLEAN HTML (REMOVE REPETITION)
 # ----------------------------
 
 def clean_html(text):
@@ -227,7 +235,7 @@ def clean_html(text):
 final_html = clean_html(final_html)
 
 # ----------------------------
-# ACCESS TOKEN
+# AUTH TOKEN
 # ----------------------------
 
 def get_token():
@@ -244,12 +252,12 @@ def get_token():
     data = r.json()
 
     if "access_token" not in data:
-        raise Exception(f"OAuth failed: {data}")
+        raise Exception(f"OAuth error: {data}")
 
     return data["access_token"]
 
 # ----------------------------
-# POST TO BLOGGER
+# POST
 # ----------------------------
 
 def post(title, content, labels):
@@ -273,7 +281,7 @@ def post(title, content, labels):
     print("BLOGGER:", r.status_code, r.text)
 
 # ----------------------------
-# DUPLICATE PROTECTION
+# DUPLICATE CONTROL
 # ----------------------------
 
 post_id = hashlib.md5(final_html.encode()).hexdigest()
@@ -294,5 +302,5 @@ open("last.txt", "w").write(post_id)
 post(
     "আজকের বাংলাদেশ ও আন্তর্জাতিক শীর্ষ সংবাদ",
     final_html,
-    ["বাংলাদেশ", "আন্তর্জাতিক", "খেলাধুলা", "প্রযুক্তি", "বিনোদন"]
+    ["বাংলাদেশ", "আন্তর্জাতিক", "খেলাধুলা", "বিনোদন", "প্রযুক্তি"]
 )
