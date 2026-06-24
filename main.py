@@ -213,7 +213,9 @@ for cat, items in CATEGORIES.items():
 
         final_html += f"""
         <h3>{i['title']}</h3>
-        <p>{block}</p>
+        <div style="font-size:18px;line-height:1.9;margin-top:15px;margin-bottom:20px;">
+         {block.replace(chr(10), '<br><br>')}
+        </div>
         <hr>
         """
 
@@ -234,7 +236,7 @@ def clean_html(text):
 
     return "<br>".join(out)
 
-final_html = clean_html(final_html)
+#final_html = clean_html(final_html)
 
 # ----------------------------
 # AUTH TOKEN
