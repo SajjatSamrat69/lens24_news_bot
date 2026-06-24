@@ -55,11 +55,19 @@ for url in FEEDS:
                 image = e.media_content[0].get("url", "")
 
             if title:
-                items.append({
-                    "title": title,
-                    "link": link,
-                    "image": image
-                })
+               summary = e.get("summary", "")
+               if not summary:
+                  summary = e.get("description", "")
+
+               source = feed.feed.get("title", "Unknown Source")
+
+               items.append({
+                   "title":title,
+                   "summary":summary,
+                   "link":link,
+                   "image":image,
+                   "source":source
+               })
 
     except Exception as ex:
         print("Feed error:", url, ex)
@@ -152,27 +160,31 @@ for k in CATEGORIES:
 # ----------------------------
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
-def generate_news_block(category, title):
+def generate_news_block(category, title, summary):
+prompt = f"""
+You are a professional Bangladeshi journalist.
 
-    prompt = f"""
-You are a professional Bangladeshi news editor.
+Rewrite the following news into natural Bengali.
 
-Write a detailed Bengali news report.
-
-Category: {category}
+Category:
+{category}
 
 Headline:
 {title}
 
-Rules:
-- 120 to 180 words
-- Professional Bengali newspaper style
-- Proper punctuation
-- Multiple paragraphs
-- No repetition
-- No bullet points
-"""
+Original News:
+{summary}
 
+Rules:
+
+- Use only the information provided
+- Do not invent facts
+- Professional newspaper tone
+- 120-180 words
+- Proper Bengali punctuation
+- 2-3 paragraphs
+- Clear and readable Bengali
+"""
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers=headers,
@@ -205,7 +217,7 @@ for cat, items in CATEGORIES.items():
 
 
     for i in items:
-        block = generate_news_block(cat,i["title"])
+        block = generate_news_block(cat,i["title"],i["summary"])
         img = i.get("image", "")
 
         if img:
@@ -213,9 +225,19 @@ for cat, items in CATEGORIES.items():
 
         final_html += f"""
         <h3>{i['title']}</h3>
+
+        <p>
+        <b>সূত্র:</b> {i['source']}
+        </p>
+
         <div style="font-size:18px;line-height:1.9;margin-top:15px;margin-bottom:20px;">
-         {block.replace(chr(10), '<br><br>')}
+        {block.replace(chr(10), '<br><br>')}
         </div>
+
+        <p>
+        <a href="{i['link']}">মূল সংবাদ</a>
+        </p>
+
         <hr>
         """
 
