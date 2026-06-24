@@ -153,40 +153,52 @@ for k in CATEGORIES:
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
 
-def generate_news_block(category, items):
-    headlines = "\n".join([f"- {x['title']}" for x in items])
+def generate_news(title, category):
 
     prompt = f"""
-You are a professional Bangladeshi news editor.
+You are a professional Bengali newspaper editor.
 
-Write detailed Bengali news for EACH headline.
+Write a detailed Bengali news article.
 
-Category: {category}
+Headline:
+{title}
+
+Category:
+{category}
 
 Rules:
-- 4–6 line summaries
-- no repetition
-- proper journalistic tone
-- structured output
-
-Headlines:
-{headlines}
+- 150-200 words
+- Multiple paragraphs
+- Proper Bengali punctuation
+- No bullet points
+- No repetition
+- Professional newspaper tone
 """
 
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json={
-            "model": "llama-3.1-8b-instant",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.4
-        }
-    )
-
     try:
+
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.4
+            }
+        )
+
         return r.json()["choices"][0]["message"]["content"]
-    except:
-        return "বিশ্লেষণ ব্যর্থ"
+
+    except Exception as e:
+
+        print("Groq error:", e)
+
+        return None
 
 # ----------------------------
 # BUILD HTML
