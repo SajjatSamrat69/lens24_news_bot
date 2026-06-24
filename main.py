@@ -152,25 +152,25 @@ for k in CATEGORIES:
 # ----------------------------
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
-
-def generate_news_block(category, items):
-    headlines = "\n".join([f"- {x['title']}" for x in items])
+def generate_news_block(category, title):
 
     prompt = f"""
 You are a professional Bangladeshi news editor.
 
-Write detailed Bengali news for EACH headline.
+Write a detailed Bengali news report.
 
 Category: {category}
 
-Rules:
-- 4–6 line summaries
-- no repetition
-- proper journalistic tone
-- structured output
+Headline:
+{title}
 
-Headlines:
-{headlines}
+Rules:
+- 120 to 180 words
+- Professional Bengali newspaper style
+- Proper punctuation
+- Multiple paragraphs
+- No repetition
+- No bullet points
 """
 
     r = requests.post(
@@ -178,7 +178,12 @@ Headlines:
         headers=headers,
         json={
             "model": "llama-3.1-8b-instant",
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             "temperature": 0.4
         }
     )
@@ -187,7 +192,6 @@ Headlines:
         return r.json()["choices"][0]["message"]["content"]
     except:
         return "বিশ্লেষণ ব্যর্থ"
-
 # ----------------------------
 # BUILD HTML
 # ----------------------------
@@ -199,10 +203,9 @@ for cat, items in CATEGORIES.items():
     if not items:
         continue
 
-    block = generate_news_block(cat, items)
-
 
     for i in items:
+        block = generate_news_block(cat,i["title"])
         img = i.get("image", "")
 
         if img:
