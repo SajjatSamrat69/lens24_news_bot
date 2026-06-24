@@ -185,7 +185,7 @@ def generate_news_block(category, title, summary):
  - 2-3 paragraphs
  - Clear and readable Bengali
  """
-    r = requests.post(
+ r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers=headers,
         json={
