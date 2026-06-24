@@ -211,9 +211,8 @@ for cat, items in CATEGORIES.items():
     if not items:
         continue
 
-    block = generate_news_block(cat, items)
-
     final_html += f"<h2>{cat}</h2>"
+
 
     for i in items:
         img = i.get("image", "")
@@ -221,11 +220,16 @@ for cat, items in CATEGORIES.items():
         if img:
             final_html += f'<img src="{img}" style="width:100%;max-height:250px;object-fit:cover;">'
 
-        final_html += f"""
-        <h3>{i['title']}</h3>
-        <p>{block}</p>
-        <hr>
-        """
+       article = generate_news(
+    i["title"],
+    cat
+)
+
+final_html += f"""
+<h3>{i['title']}</h3>
+<p>{article}</p>
+<hr>
+"""
 
 # ----------------------------
 # CLEAN HTML (REMOVE REPETITION)
