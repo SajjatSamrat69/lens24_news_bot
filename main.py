@@ -161,30 +161,30 @@ for k in CATEGORIES:
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
 def generate_news_block(category, title, summary):
-prompt = f"""
-You are a professional Bangladeshi journalist.
+ prompt = f"""
+ You are a professional Bangladeshi journalist.
 
-Rewrite the following news into natural Bengali.
+ Rewrite the following news into natural Bengali.
 
-Category:
-{category}
+ Category:
+ {category}
 
-Headline:
-{title}
+ Headline:
+ {title}
 
-Original News:
-{summary}
+ Original News:
+ {summary}
 
-Rules:
+ Rules:
 
-- Use only the information provided
-- Do not invent facts
-- Professional newspaper tone
-- 120-180 words
-- Proper Bengali punctuation
-- 2-3 paragraphs
-- Clear and readable Bengali
-"""
+ - Use only the information provided
+ - Do not invent facts
+ - Professional newspaper tone
+ - 120-180 words
+ - Proper Bengali punctuation
+ - 2-3 paragraphs
+ - Clear and readable Bengali
+ """
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers=headers,
