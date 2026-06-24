@@ -153,52 +153,40 @@ for k in CATEGORIES:
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
 
-def generate_news(title, category):
+def generate_news_block(category, items):
+    headlines = "\n".join([f"- {x['title']}" for x in items])
 
     prompt = f"""
-You are a professional Bengali newspaper editor.
+You are a professional Bangladeshi news editor.
 
-Write a detailed Bengali news article.
+Write detailed Bengali news for EACH headline.
 
-Headline:
-{title}
-
-Category:
-{category}
+Category: {category}
 
 Rules:
-- 150-200 words
-- Multiple paragraphs
-- Proper Bengali punctuation
-- No bullet points
-- No repetition
-- Professional newspaper tone
+- 4–6 line summaries
+- no repetition
+- proper journalistic tone
+- structured output
+
+Headlines:
+{headlines}
 """
 
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.4
+        }
+    )
+
     try:
-
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json={
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "temperature": 0.4
-            }
-        )
-
         return r.json()["choices"][0]["message"]["content"]
-
-    except Exception as e:
-
-        print("Groq error:", e)
-
-        return None
+    except:
+        return "বিশ্লেষণ ব্যর্থ"
 
 # ----------------------------
 # BUILD HTML
@@ -211,8 +199,13 @@ for cat, items in CATEGORIES.items():
     if not items:
         continue
 
-    final_html += f"<h2>{cat}</h2>"
+    block = generate_news_block(cat, items)
 
+    post(
+        news_title,
+        article_html,
+        [single_category]
+    )
 
     for i in items:
         img = i.get("image", "")
@@ -220,16 +213,11 @@ for cat, items in CATEGORIES.items():
         if img:
             final_html += f'<img src="{img}" style="width:100%;max-height:250px;object-fit:cover;">'
 
-            article = generate_news(
-            i["title"],
-            cat
-            )
-
-final_html += f"""
-<h3>{i['title']}</h3>
-<p>{article}</p>
-<hr>
-"""
+        final_html += f"""
+        <h3>{i['title']}</h3>
+        <p>{block}</p>
+        <hr>
+        """
 
 # ----------------------------
 # CLEAN HTML (REMOVE REPETITION)
