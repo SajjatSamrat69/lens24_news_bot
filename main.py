@@ -220,10 +220,10 @@ for cat, items in CATEGORIES.items():
         if img:
             final_html += f'<img src="{img}" style="width:100%;max-height:250px;object-fit:cover;">'
 
-       article = generate_news(
-    i["title"],
-    cat
-)
+            article = generate_news(
+            i["title"],
+            cat
+            )
 
 final_html += f"""
 <h3>{i['title']}</h3>
