@@ -200,10 +200,10 @@ def generate_news_block(category, title, summary):
         }
     )
 
-    try:
-        return r.json()["choices"][0]["message"]["content"]
-    except:
-        return "বিশ্লেষণ ব্যর্থ"
+ try:
+     return r.json()["choices"][0]["message"]["content"]
+ except:
+    return "বিশ্লেষণ ব্যর্থ"
 # ----------------------------
 # BUILD HTML
 # ----------------------------
