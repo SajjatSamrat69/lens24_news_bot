@@ -201,11 +201,6 @@ for cat, items in CATEGORIES.items():
 
     block = generate_news_block(cat, items)
 
-    post(
-        news_title,
-        article_html,
-        [single_category]
-    )
 
     for i in items:
         img = i.get("image", "")
