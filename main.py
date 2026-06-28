@@ -130,7 +130,7 @@ Return ONLY category name.
         "https://api.groq.com/openai/v1/chat/completions",
         headers=headers,
         json={
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0
         }
@@ -189,7 +189,7 @@ def generate_news_block(category, title, summary):
         "https://api.groq.com/openai/v1/chat/completions",
         headers=headers,
         json={
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "role": "user",
@@ -326,7 +326,7 @@ open("last.txt", "w").write(post_id)
 # ----------------------------
 
 post(
-    "আজকের বাংলাদেশ ও আন্তর্জাতিক শীর্ষ সংবাদ",
+    "শীর্ষ সংবাদ",
     final_html,
     ["বাংলাদেশ", "আন্তর্জাতিক", "খেলাধুলা", "বিনোদন", "প্রযুক্তি"]
 )
