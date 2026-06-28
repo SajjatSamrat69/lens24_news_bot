@@ -233,7 +233,7 @@ def generate_news_block(category, title, summary):
  try:
      return r.json()["choices"][0]["message"]["content"]
  except:
-    return None
+    return "Nothing found"
 # ----------------------------
 # BUILD HTML
 # ----------------------------
