@@ -18,7 +18,7 @@ def extract_article(url):
 
         text = article.text.strip()
 
-        if len(text) < 300:
+        if len(text) < 100:
             return ""
 
         return text[:5000]
@@ -175,6 +175,7 @@ Return ONLY category name.
 
 for i in clean:
     cat = classify(i["title"])
+    
 
     if cat not in CATEGORIES:
         cat = "আন্তর্জাতিক"
@@ -183,7 +184,7 @@ for i in clean:
 
 # limit per category (balance fix)
 for k in CATEGORIES:
-    CATEGORIES[k] = CATEGORIES[k][:2]
+    CATEGORIES[k] = CATEGORIES[k][:8]
 
 # ----------------------------
 # BUILD FINAL OUTPUT PER CATEGORY
@@ -191,8 +192,11 @@ for k in CATEGORIES:
 def generate_news_block(category, item):
     article_text= item.get("content"," ")
 
-    if not article_text:
-        article_text=item.get("summary", item["title"])
+    if len(article_text.strip()) < 100:
+        article_text=item.get("summary", " ")
+
+    if len(article_text.strip()) < 50:
+        article_text=item["title"]
         
     prompt = f"""
     আপনি বাংলাদেশের একটি শীর্ষস্থানীয় জাতীয় দৈনিক পত্রিকার প্রধান সম্পাদক এবং অনুসন্ধানী সাংবাদিকতার বিশেষজ্ঞ।
