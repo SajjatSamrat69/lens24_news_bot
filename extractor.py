@@ -37,10 +37,15 @@ def fetch_news(feeds):
                 if not title:
                     continue
 
+                
                 summary = e.get("summary", "")
 
                 if not summary:
                     summary = e.get("description", "")
+
+                if not summary:
+                    summary = title
+
 
                 link = e.get("link", "")
 
