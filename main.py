@@ -155,7 +155,7 @@ for i in clean:
 
 # limit per category (balance fix)
 for k in CATEGORIES:
-    CATEGORIES[k] = CATEGORIES[k][:8]
+    CATEGORIES[k] = CATEGORIES[k][:2]
 
 # ----------------------------
 # BUILD FINAL OUTPUT PER CATEGORY
@@ -245,16 +245,17 @@ def generate_news_block(category, item):
             "temperature": 0.2
          }
     )
+   try:
+     data = r.json()
+     print("Groq response:", data)
+     return data["choices"][0]["message"]["content"]
 
-    try:
-      data = r.json()
-      print(data)   # Debug
-      return data["choices"][0]["message"]["content"]
-
-    except Exception as e:
-      print("Groq Error:", e)
-      print("Response:", r.text)
-      return "Nothing found"
+   except Exception as e:
+     print("Groq exception:", e)
+     print("HTTP Status:", r.status_code)
+     print("Raw response:")
+     print(r.text)
+     raise
 # ----------------------------
 # BUILD HTML
 # ----------------------------
