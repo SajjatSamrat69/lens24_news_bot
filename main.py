@@ -245,17 +245,17 @@ def generate_news_block(category, item):
             "temperature": 0.2
          }
     )
-   try:
-     data = r.json()
-     print("Groq response:", data)
-     return data["choices"][0]["message"]["content"]
+    try:
+      data = r.json()
+      print("Groq response:", data)
+      return data["choices"][0]["message"]["content"]
 
-   except Exception as e:
-     print("Groq exception:", e)
-     print("HTTP Status:", r.status_code)
-     print("Raw response:")
-     print(r.text)
-     raise
+    except Exception as e:
+      print("Groq exception:", e)
+      print("HTTP Status:", r.status_code)
+      print("Raw response:")
+      print(r.text)
+      raise
 # ----------------------------
 # BUILD HTML
 # ----------------------------
