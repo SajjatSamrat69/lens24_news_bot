@@ -56,6 +56,12 @@ def fetch_news(feeds):
 
                 content = extract_article(link)
 
+                print("=" * 60)
+                print("SOURCE:", source)
+                print("TITLE:", title)
+                print("Summary length:", len(summary))
+                print("Content length:", len(content))
+
                 items.append({
                     "title": title,
                     "summary": summary,
