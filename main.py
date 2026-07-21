@@ -2,7 +2,6 @@ import feedparser
 import requests
 import os
 import hashlib
-from collections import defaultdict
 from extractor import fetch_news
 
 # ----------------------------
@@ -70,7 +69,7 @@ for i in items:
         seen.add(k)
         clean.append(i)
 
-clean = clean[:20]
+clean = clean[:30]
 
 # ----------------------------
 # GROQ SETUP
@@ -93,35 +92,6 @@ CATEGORIES = {
     "বিজ্ঞান ও প্রযুক্তি": []
 }
 
-def classify(title):
-    prompt = f"""
-Classify this news into ONLY ONE category:
-
-- দেশীয় রাজনীতি
-- আন্তর্জাতিক
-- খেলাধুলা
-- বিনোদন
-- বিজ্ঞান ও প্রযুক্তি
-
-News: {title}
-
-Return ONLY category name.
-"""
-
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json={
-            "model": "llama-3.3-70b-versatile",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0
-        }
-    )
-
-    try:
-        return r.json()["choices"][0]["message"]["content"].strip()
-    except:
-        return "আন্তর্জাতিক"
 
 # ----------------------------
 # DISTRIBUTE
@@ -141,7 +111,7 @@ for i in clean:
     elif "bbc" in source or "guardian" in source or "al jazeera" in source or "dw" in source:
         cat = "আন্তর্জাতিক"
 
-    elif "star" in source:
+    elif "the daily star" in source:
         cat = "দেশীয় রাজনীতি"
 
     else:
@@ -177,6 +147,16 @@ def generate_news_block(category, item):
 
     প্রদত্ত তথ্যের ভিত্তিতে ১৮০–২৫০ শব্দের একটি প্রমিত বাংলা সংবাদ লিখুন।
 
+    সংবাদের বিভাগ:
+    {category}
+
+    শিরোনাম:
+    {item["title"]}
+
+    তথ্য:
+    {article_text}
+
+
 
    - কোনো নতুন তথ্য, সংখ্যা বা উদ্ধৃতি তৈরি করবেন না।
    - একই তথ্য পুনরাবৃত্তি করবেন না।
@@ -205,7 +185,14 @@ def generate_news_block(category, item):
 
     if "error" in data:
       print(data["error"]["message"])
-      return item.get("summary", item["title"])
+      if len(item.get("content", "")) > 200:
+        return item["content"]
+
+      elif len(item.get("summary", "")) > 50:
+        return item["summary"]
+
+      else:
+        return item["title"]
 
     return data["choices"][0]["message"]["content"]
 # ----------------------------
