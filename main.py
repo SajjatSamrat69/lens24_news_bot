@@ -239,8 +239,13 @@ def generate_news_block(category, item):
     )
 
     try:
-      return r.json()["choices"][0]["message"]["content"]
-    except:
+      data = r.json()
+      print(data)   # Debug
+      return data["choices"][0]["message"]["content"]
+
+    except Exception as e:
+      print("Groq Error:", e)
+      print("Response:", r.text)
       return "Nothing found"
 # ----------------------------
 # BUILD HTML
