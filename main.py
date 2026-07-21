@@ -3,29 +3,12 @@ import requests
 import os
 import hashlib
 from collections import defaultdict
-from newspaper import Article
 from extractor import fetch_news
 
 # ----------------------------
 # ENV
 # ----------------------------
 
-
-def extract_article(url):
-    try:
-        article= Article(url)
-        article.download()
-        article.parse()
-
-        text = article.text.strip()
-
-        if len(text) < 100:
-            return ""
-
-        return text[:5000]
-    except Exception as e:
-        print("Article Error:", e)
-        return ""
 
 def env(name):
     v = os.getenv(name)
@@ -190,27 +173,19 @@ def generate_news_block(category, item):
     article_text = article_text[:1500]
 
     prompt = f"""
-    আপনি বাংলাদেশের একটি শীর্ষস্থানীয় জাতীয় দৈনিক পত্রিকার প্রধান সম্পাদক এবং অনুসন্ধানী সাংবাদিকতার বিশেষজ্ঞ।
+    আপনি একজন পেশাদার বাংলাদেশি সংবাদ সম্পাদক।
 
-    আপনার কাজ হলো প্রদত্ত তথ্যের ভিত্তিতে একটি পূর্ণাঙ্গ, নির্ভুল, তথ্যসমৃদ্ধ ও পেশাদার সংবাদ প্রতিবেদন তৈরি করা।
+    প্রদত্ত তথ্যের ভিত্তিতে ১৮০–২৫০ শব্দের একটি প্রমিত বাংলা সংবাদ লিখুন।
 
-    সংবাদের বিভাগ:
-    {category}
 
-    শিরোনাম:
-    {item["title"]}
-
-    মূল তথ্য:
-    {article_text}
-
-    লেখার নির্দেশনা:
-
-    * তথ্য উদ্ভাবন করবেন না।
-    * পুনরাবৃত্তি করবেন না।
-    * ৩–৪টি অনুচ্ছেদ লিখুন।
-    * প্রথম অনুচ্ছেদে মূল তথ্য দিন।
-    * শেষ অনুচ্ছেদে ঘটনার তাৎপর্য লিখুন।
-    * শুধুমাত্র সংবাদ লিখুন।
+   - কোনো নতুন তথ্য, সংখ্যা বা উদ্ধৃতি তৈরি করবেন না।
+   - একই তথ্য পুনরাবৃত্তি করবেন না।
+   - ৩–৪টি স্বাভাবিক অনুচ্ছেদ লিখুন।
+   - প্রথম অনুচ্ছেদে মূল ঘটনা উপস্থাপন করুন।
+   - পরবর্তী অংশে প্রেক্ষাপট ও গুরুত্বপূর্ণ তথ্য দিন।
+   - শেষ অনুচ্ছেদে ঘটনার তাৎপর্য সংক্ষেপে লিখুন।
+   - অনুবাদের মতো ভাষা ব্যবহার করবেন না।
+   - শুধুমাত্র সংবাদ লিখুন।
     """
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -223,20 +198,16 @@ def generate_news_block(category, item):
                     "content": prompt
                 }
             ],
-            "temperature": 0.2
+            "temperature": 0.1
          }
     )
-    try:
-      data = r.json()
-      print("Groq response:", data)
-      return data["choices"][0]["message"]["content"]
+    data = r.json()
 
-    except Exception as e:
-      print("Groq exception:", e)
-      print("HTTP Status:", r.status_code)
-      print("Raw response:")
-      print(r.text)
-      raise
+    if "error" in data:
+      print(data["error"]["message"])
+      return item.get("summary", item["title"])
+
+    return data["choices"][0]["message"]["content"]
 # ----------------------------
 # BUILD HTML
 # ----------------------------
