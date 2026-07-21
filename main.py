@@ -161,14 +161,22 @@ for k in CATEGORIES:
 # BUILD FINAL OUTPUT PER CATEGORY
 # ----------------------------
 def generate_news_block(category, item):
-    article_text= item.get("content"," ")
+   
+    article_text = item.get("content", "")
 
     if len(article_text.strip()) < 100:
-        article_text=item.get("summary", " ")
+        article_text = item.get("summary", "")
 
     if len(article_text.strip()) < 50:
-        article_text=item["title"]
-        
+        article_text = item["title"]
+
+    # ----------------------------
+    # CLEAN THE ARTICLE TEXT
+    # ----------------------------
+    article_text = article_text.replace("\n", " ")
+    article_text = " ".join(article_text.split())
+    article_text = article_text[:1800]
+
     prompt = f"""
     আপনি বাংলাদেশের একটি শীর্ষস্থানীয় জাতীয় দৈনিক পত্রিকার প্রধান সম্পাদক এবং অনুসন্ধানী সাংবাদিকতার বিশেষজ্ঞ।
 
