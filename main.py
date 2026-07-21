@@ -4,6 +4,7 @@ import os
 import hashlib
 from collections import defaultdict
 from newspaper import Article
+from extractor import fetch_news
 
 # ----------------------------
 # ENV
@@ -60,47 +61,11 @@ FEEDS = [
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw"
 ]
 
-# ----------------------------
-# FETCH
-# ----------------------------
 
-items = []
-
-for url in FEEDS:
-    try:
-        feed = feedparser.parse(url)
-
-        for e in feed.entries[:6]:
-            title = e.get("title", "").strip()
-            link = e.get("link", "")
-
-            image = ""
-            if hasattr(e, "media_content") and e.media_content:
-                image = e.media_content[0].get("url", "")
-
-            if title:
-               summary = e.get("summary", "")
-               if not summary:
-                  summary = e.get("description", "")
-
-               source = feed.feed.get("title", "Unknown Source")
-
-               full_text = extract_article(link)
-
-               items.append({
-                   "title":title,
-                   "summary":summary,
-                   "link":link,
-                   "content":full_text,
-                   "image":image,
-                   "source":source,
-                  
-               })
-
-    except Exception as ex:
-        print("Feed error:", url, ex)
+items = fetch_news(FEEDS)
 
 print("Fetched:", len(items))
+
 
 # ----------------------------
 # DEDUPE
