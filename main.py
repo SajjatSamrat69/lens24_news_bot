@@ -66,6 +66,12 @@ items = fetch_news(FEEDS)
 
 print("Fetched:", len(items))
 
+for x in items[:3]:
+    print("="*50)
+    print("TITLE:", x["title"])
+    print("SUMMARY:", x["summary"][:150])
+    print("CONTENT LENGTH:", len(x["content"]))
+
 
 # ----------------------------
 # DEDUPE
