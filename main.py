@@ -3,7 +3,7 @@ import requests
 import os
 import hashlib
 from extractor import fetch_news
-from ai import rewrite
+from AI import rewrite
 
 # ----------------------------
 # ENV
