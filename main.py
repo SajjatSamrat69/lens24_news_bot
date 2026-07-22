@@ -160,6 +160,18 @@ def generate_news_block(category, item):
     * সম্পূর্ণ উত্তর বাংলায় হবে।
 
     """
+
+
+    try:
+     news = rewrite(prompt)
+
+     if news:
+        return news
+
+    except Exception as e:
+     print("AI Error:", e)
+
+    return "দুঃখিত, এই সংবাদটি সাময়িকভাবে প্রক্রিয়াকরণ করা যায়নি।"
    
    
 # ----------------------------
