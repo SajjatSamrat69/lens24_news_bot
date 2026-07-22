@@ -3,6 +3,7 @@ import requests
 import os
 import hashlib
 from extractor import fetch_news
+from ai import rewrite
 
 # ----------------------------
 # ENV
@@ -174,35 +175,18 @@ def generate_news_block(category, item):
 
     """
    
-    
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers=headers,
-        json={
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.1
-         }
-    )
-    data = r.json()
+    news = rewrite(prompt)
 
-    if "error" in data:
-      print(data["error"]["message"])
-      if len(item.get("content", "")) > 200:
-        return item["content"]
+    if news:
+     return news
 
-      elif len(item.get("summary", "")) > 50:
-        return item["summary"]
+    if len(item.get("content", "")) > 200:
+     return item["content"]
 
-      else:
-        return item["title"]
+    elif len(item.get("summary", "")) > 50:
+     return item["summary"]
 
-    return data["choices"][0]["message"]["content"]
+    return item["title"]
 # ----------------------------
 # BUILD HTML
 # ----------------------------
