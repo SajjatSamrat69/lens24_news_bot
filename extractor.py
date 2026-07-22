@@ -19,16 +19,23 @@ def extract_article(url):
         return ""
 
 
-def fetch_news(feeds):
+def fetch_news(sources):
 
     items = []
 
-    for url in feeds:
+    for source in sources:
 
         try:
-            feed = feedparser.parse(url)
+            rss = source["rss"]
 
-            source = feed.feed.get("title", "Unknown Source")
+            if not rss:
+             continue
+
+            feed = feedparser.parse(rss)
+
+            source_name = source["name"]
+            category = source["category"]
+            priority = source["priority"]
 
             for e in feed.entries[:6]:
 
@@ -57,7 +64,7 @@ def fetch_news(feeds):
                 content = extract_article(link)
 
                 print("=" * 60)
-                print("SOURCE:", source)
+                print("SOURCE:", source_name)
                 print("TITLE:", title)
                 print("Summary length:", len(summary))
                 print("Content length:", len(content))
@@ -68,7 +75,9 @@ def fetch_news(feeds):
                     "content": content,
                     "link": link,
                     "image": image,
-                    "source": source
+                    "source": source_name,
+                    "category": category,
+                    "priority": priority
                 })
 
         except Exception as ex:
