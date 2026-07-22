@@ -12,7 +12,7 @@ def extract_article(url):
         if len(text) < 100:
             return ""
 
-        return text[:2500]
+        return text[:5000]
 
     except Exception as e:
         print("Newspaper Error:", e)
