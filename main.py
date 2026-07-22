@@ -27,19 +27,287 @@ BLOGGER_CLIENT_SECRET = env("BLOGGER_CLIENT_SECRET")
 # RSS SOURCES
 # ----------------------------
 
-FEEDS = [
-    "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "https://www.aljazeera.com/xml/rss/all.xml",
-    "https://www.dw.com/en/top-stories/s-9097/rss",
-    "https://www.theguardian.com/world/rss",
-    "https://feeds.espn.com/espn/rss/news",
-    "https://techcrunch.com/feed/",
-    "https://www.thedailystar.net/frontpage/rss.xml",
-    "https://www.youtube.com/feeds/videos.xml?channel_id=UCN6sm8iHiPd0cnoUardDAnw"
+# ----------------------------
+# NEWS SOURCES
+# ----------------------------
+
+SOURCES = [
+
+    # ==========================================
+    # দেশীয় রাজনীতি
+    # ==========================================
+
+    {
+        "name": "The Daily Star",
+        "category": "দেশীয় রাজনীতি",
+        "priority": 9,
+        "rss": "https://www.thedailystar.net/frontpage/rss.xml",
+        "homepage": "https://www.thedailystar.net/"
+    },
+
+    {
+        "name": "bdnews24",
+        "category": "দেশীয় রাজনীতি",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://bdnews24.com/"
+    },
+
+    {
+        "name": "Dhaka Tribune",
+        "category": "দেশীয় রাজনীতি",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.dhakatribune.com/"
+    },
+
+    {
+        "name": "BBC Bangla",
+        "category": "দেশীয় রাজনীতি",
+        "priority": 8,
+        "rss": "https://feeds.bbci.co.uk/bengali/rss.xml",
+        "homepage": "https://www.bbc.com/bengali"
+    },
+
+    {
+        "name": "The Business Standard",
+        "category": "দেশীয় রাজনীতি",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.tbsnews.net/"
+    },
+
+
+    # ==========================================
+    # আন্তর্জাতিক
+    # ==========================================
+
+    {
+        "name": "BBC News",
+        "category": "আন্তর্জাতিক",
+        "priority": 10,
+        "rss": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "homepage": "https://www.bbc.com/news/world"
+    },
+
+    {
+        "name": "Reuters",
+        "category": "আন্তর্জাতিক",
+        "priority": 10,
+        "rss": None,
+        "homepage": "https://www.reuters.com/world/"
+    },
+
+    {
+        "name": "Al Jazeera",
+        "category": "আন্তর্জাতিক",
+        "priority": 9,
+        "rss": "https://www.aljazeera.com/xml/rss/all.xml",
+        "homepage": "https://www.aljazeera.com/"
+    },
+
+    {
+        "name": "DW",
+        "category": "আন্তর্জাতিক",
+        "priority": 9,
+        "rss": "https://www.dw.com/en/top-stories/s-9097/rss",
+        "homepage": "https://www.dw.com/en/"
+    },
+
+    {
+        "name": "The Guardian",
+        "category": "আন্তর্জাতিক",
+        "priority": 9,
+        "rss": "https://www.theguardian.com/world/rss",
+        "homepage": "https://www.theguardian.com/world"
+    },
+
+    {
+        "name": "CNN",
+        "category": "আন্তর্জাতিক",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://edition.cnn.com/world"
+    },
+
+
+    # ==========================================
+    # খেলাধুলা
+    # ==========================================
+
+    {
+        "name": "ESPN Cricinfo",
+        "category": "খেলাধুলা",
+        "priority": 10,
+        "rss": None,
+        "homepage": "https://www.espncricinfo.com/"
+    },
+
+    {
+        "name": "Cricbuzz",
+        "category": "খেলাধুলা",
+        "priority": 10,
+        "rss": None,
+        "homepage": "https://www.cricbuzz.com/"
+    },
+
+    {
+        "name": "BBC Sport Football",
+        "category": "খেলাধুলা",
+        "priority": 9,
+        "rss": "https://feeds.bbci.co.uk/sport/football/rss.xml",
+        "homepage": "https://www.bbc.com/sport/football"
+    },
+
+    {
+        "name": "Sky Sports Football",
+        "category": "খেলাধুলা",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.skysports.com/football"
+    },
+
+    {
+        "name": "FIFA",
+        "category": "খেলাধুলা",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.fifa.com/"
+    },
+
+    {
+        "name": "Olympics",
+        "category": "খেলাধুলা",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://olympics.com/"
+    },
+
+
+    # ==========================================
+    # বিজ্ঞান ও প্রযুক্তি
+    # ==========================================
+
+    {
+        "name": "TechCrunch",
+        "category": "বিজ্ঞান ও প্রযুক্তি",
+        "priority": 10,
+        "rss": "https://techcrunch.com/feed/",
+        "homepage": "https://techcrunch.com/"
+    },
+
+    {
+        "name": "The Verge",
+        "category": "বিজ্ঞান ও প্রযুক্তি",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.theverge.com/"
+    },
+
+    {
+        "name": "Ars Technica",
+        "category": "বিজ্ঞান ও প্রযুক্তি",
+        "priority": 9,
+        "rss": "https://feeds.arstechnica.com/arstechnica/index",
+        "homepage": "https://arstechnica.com/"
+    },
+
+    {
+        "name": "MIT Technology Review",
+        "category": "বিজ্ঞান ও প্রযুক্তি",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.technologyreview.com/"
+    },
+
+    {
+        "name": "Tom's Hardware",
+        "category": "বিজ্ঞান ও প্রযুক্তি",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.tomshardware.com/"
+    },
+
+
+    # ==========================================
+    # বিনোদন
+    # ==========================================
+
+    {
+        "name": "Channel i",
+        "category": "বিনোদন",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.channelionline.com/"
+    },
+
+    {
+        "name": "Prothom Alo Entertainment",
+        "category": "বিনোদন",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.prothomalo.com/entertainment"
+    },
+
+    {
+        "name": "Bollywood Hungama",
+        "category": "বিনোদন",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.bollywoodhungama.com/"
+    },
+
+    {
+        "name": "Filmfare",
+        "category": "বিনোদন",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.filmfare.com/"
+    },
+
+    {
+        "name": "Cinema Express",
+        "category": "বিনোদন",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.cinemaexpress.com/"
+    },
+
+    {
+        "name": "123Telugu",
+        "category": "বিনোদন",
+        "priority": 8,
+        "rss": None,
+        "homepage": "https://www.123telugu.com/"
+    },
+
+    {
+        "name": "The Hollywood Reporter",
+        "category": "বিনোদন",
+        "priority": 10,
+        "rss": None,
+        "homepage": "https://www.hollywoodreporter.com/"
+    },
+
+    {
+        "name": "Anime News Network",
+        "category": "বিনোদন",
+        "priority": 9,
+        "rss": None,
+        "homepage": "https://www.animenewsnetwork.com/"
+    },
+
+    {
+        "name": "Variety",
+        "category": "বিনোদন",
+        "priority": 10,
+        "rss": None,
+        "homepage": "https://variety.com/"
+    }
+
 ]
 
-
-items = fetch_news(FEEDS)
+items = fetch_news(SOURCES)
 
 print("Fetched:", len(items))
 
