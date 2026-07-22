@@ -57,7 +57,13 @@ def fetch_news(sources):
             if not rss:
              continue
 
-            feed = feedparser.parse(rss)
+            feed = feedparser.parse(
+            requests.get(
+             rss,
+             headers={"User-Agent": "Mozilla/5.0"},
+             timeout=20
+             ).content
+            )
 
             source_name = source["name"]
             category = source["category"]
@@ -82,19 +88,19 @@ def fetch_news(sources):
 
                 link = e.get("link", "")
 
-               image = ""
+                image = ""
 
-               if hasattr(e, "media_content") and e.media_content:
+                if hasattr(e, "media_content") and e.media_content:
                  image = e.media_content[0].get("url", "")
 
-               elif hasattr(e, "media_thumbnail") and e.media_thumbnail:
+                elif hasattr(e, "media_thumbnail") and e.media_thumbnail:
                  image = e.media_thumbnail[0].get("url", "")
 
-               elif hasattr(e, "links"):
+                elif hasattr(e, "links"):
                  for l in e.links:
-                   if l.get("type", "").startswith("image"):
-                    image = l.get("href")
-                    break
+                    if l.get("type", "").startswith("image"):
+                     image = l.get("href")
+                     break
 
                 content = extract_article(link)
 
