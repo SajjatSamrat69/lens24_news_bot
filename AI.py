@@ -42,26 +42,103 @@ PROMPT = """
 {article}
 """
 
-def gemini_rewrite(title, category, article):
-
-    prompt = PROMPT.format(
-        title=title,
-        category=category,
-        article=article
-    )
-
+def gemini_rewrite(prompt):
     try:
-        interaction = gemini_client.interactions.create(
-            model="models/gemini-3.6-flash",
-            input=prompt,
-            generation_config={
-                "thinking_level": "medium",
+        response = gemini_client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt,
+            config={
+                "temperature": 0.1,
                 "max_output_tokens": 2048,
-            },
+            }
         )
 
-        return interaction.steps[-1].text.strip()
+        if response.text:
+            return response.text.strip()
+
+        raise Exception("Empty Gemini response")
 
     except Exception as e:
-        print("Gemini Error:", e)
+        print("Gemini failed:", e)
         return None
+
+
+def groq_rewrite(prompt):
+    try:
+        completion = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.1,
+            max_completion_tokens=2048,
+            top_p=1,
+            stream=False
+        )
+
+        return completion.choices[0].message.content.strip()
+
+    except Exception as e:
+        print("Groq failed:", e)
+        return None
+
+
+def openrouter_rewrite(prompt):
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com",
+                "X-OpenRouter-Title": "Lens24 News Bot"
+            },
+            json={
+                "model": "deepseek/deepseek-chat-v3",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 2048
+            },
+            timeout=60
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data["choices"][0]["message"]["content"].strip()
+
+    except Exception as e:
+        print("OpenRouter failed:", e)
+        return None
+
+
+
+def rewrite(prompt):
+    # 1. Gemini
+    result = gemini_rewrite(prompt)
+    if result:
+        print("✓ Used Gemini")
+        return result
+
+    # 2. Groq
+    result = groq_rewrite(prompt)
+    if result:
+        print("✓ Used Groq")
+        return result
+
+    # 3. OpenRouter
+    result = openrouter_rewrite(prompt)
+    if result:
+        print("✓ Used OpenRouter")
+        return result
+
+    raise Exception("All AI providers failed.")
