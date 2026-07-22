@@ -8,3 +8,4 @@ lxml_html_clean
 
 google-genai
 groq
+beautifulsoup4
