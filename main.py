@@ -161,13 +161,7 @@ def generate_news_block(category, item):
 
     """
    
-    news = rewrite(prompt)
-
-    if news:
-     return news
-
-    
-    return "দুঃখিত, এই সংবাদটি সাময়িকভাবে প্রক্রিয়াকরণ করা যায়নি।"
+   
 # ----------------------------
 # BUILD HTML
 # ----------------------------
