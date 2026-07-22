@@ -16,12 +16,6 @@ def env(name):
         raise Exception(f"Missing env: {name}")
     return v
 
-GROQ_API_KEY = env("GROQ_API_KEY")
-
-headers={
-    "Authorization":f"Bearer {GROQ_API_KEY}",
-    "Content-Type":"application/json"
-}
 
 
 BLOG_ID = env("BLOG_ID")
@@ -72,14 +66,6 @@ for i in items:
 
 clean = clean[:30]
 
-# ----------------------------
-# GROQ SETUP
-# ----------------------------
-
-headers = {
-    "Authorization": f"Bearer {GROQ_API_KEY}",
-    "Content-Type": "application/json"
-}
 
 # ----------------------------
 # CATEGORY CLASSIFICATION (STRICT)
@@ -112,7 +98,7 @@ for i in clean:
     elif "bbc" in source or "guardian" in source or "al jazeera" in source or "dw" in source:
         cat = "আন্তর্জাতিক"
 
-    elif "the daily star" in source:
+    elif "star" in source and "daily" in source:
         cat = "দেশীয় রাজনীতি"
 
     else:
@@ -180,13 +166,8 @@ def generate_news_block(category, item):
     if news:
      return news
 
-    if len(item.get("content", "")) > 200:
-     return item["content"]
-
-    elif len(item.get("summary", "")) > 50:
-     return item["summary"]
-
-    return item["title"]
+    
+    return "দুঃখিত, এই সংবাদটি সাময়িকভাবে প্রক্রিয়াকরণ করা যায়নি।"
 # ----------------------------
 # BUILD HTML
 # ----------------------------
